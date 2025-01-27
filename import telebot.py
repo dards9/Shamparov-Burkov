@@ -18,14 +18,10 @@ PATH_SAVE_VIDEO_NOTE = 'data/video_note/'
 logging.basicConfig(level=logging.INFO)
 PATH_SAVE_VOICE = 'data/voice/'
 PATH_SAVE_VIDEO_NOTE = 'data/video_note/'
-
 logging.basicConfig(level=logging.INFO)
-
-
 @bot.message_handler(commands=['start'])
 def start_message(message):
-    bot.send_message(message.chat.id, "Приветствую вас! нажмите /button.")
-
+bot.send_message(message.chat.id, "Приветствую вас! нажмите /button.")
 @bot.message_handler(commands=['button'])
 def button(message):
     markup = types.InlineKeyboardMarkup(row_width=1)
