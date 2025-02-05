@@ -4,6 +4,7 @@ from fastapi import FastAPI,Request
 import uvicorn
 
 from schemas import Answer
+from swh import Answer
 
 model = whisper.load_model("small")
 result = model.transcribe("audio.mp3")
