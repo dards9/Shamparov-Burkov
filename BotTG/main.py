@@ -15,11 +15,12 @@ app=FastAPI()
 @app.post("/")
 async def read_root(request:Request):
     json=await request.json()
-    print(json)
+    print(json) 
     return 200
 
 
 
 if __name__=="__main__":
     uvicorn.run("main:app",port=8000,host="0.0.0.0",reload=False)
-    print ("fjdijdf")
+    print ("fjdijdf") #можешь удалять просто думал так проверить эту всю ебанину
+    
