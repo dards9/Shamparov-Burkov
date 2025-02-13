@@ -27,8 +27,8 @@
    
 Bash
 
-   git clone https://github.com/dards9/Shamparov-Burkov/blob/main/README.md
-   cd ваш-репозиторий
+   https://github.com/dards9/Shamparov-Burkov/blob/main/README.md
+   
    
 
 2. Установите зависимости:
