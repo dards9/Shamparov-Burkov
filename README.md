@@ -35,7 +35,7 @@ Bash
    
 Bash
 
-   pip install -r requirements.txt
+   (pip install -r requirements.txt)
    
 
 3. Добавьте свой токен в код: 
