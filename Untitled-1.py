@@ -1,80 +1,107 @@
-import logging
+import telebot
+from telebot import types
+import json
 import os
-from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
-
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-notes = {}
-notes_file = 'note.txt'  
 
 
-def load_notes():
+BOT_TOKEN = '8079891550:AAFNQ6iC1ZAZA4PJVpZkY5Fr5fan4hEH2MA'
+bot = telebot.TeleBot(BOT_TOKEN)
+
+
+NOTE_FILE = 'notes.json'
+
+
+if not os.path.exists(NOTE_FILE):
+    with open(NOTE_FILE, 'w', encoding='utf-8') as f:
+        json.dump([], f)  
+    print(f"Файл {NOTE_FILE} был создан.")
+
+def read_notes():
+    """Чтение заметок из файла JSON."""
+    with open(NOTE_FILE, 'r', encoding='utf-8') as f:
+        notes = json.load(f)
+    return notes
+
+def write_note(note):
+    notes = read_notes()
+    notes.append(note)
+    with open(NOTE_FILE, 'w', encoding='utf-8') as f:
+        json.dump(notes, f, ensure_ascii=False, indent=4)
+
+def delete_note(index):
+    notes = read_notes()
+    if 0 <= index < len(notes):
+        notes.pop(index)
+        with open(NOTE_FILE, 'w', encoding='utf-8') as f:
+            json.dump(notes, f, ensure_ascii=False, indent=4)
+        return True
+    return False
+
+
+def main_menu(message):
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    btn_add = types.KeyboardButton("Добавить заметку")
+    btn_view = types.KeyboardButton("Просмотреть заметки")
+    btn_delete = types.KeyboardButton("Удалить заметку")
+    markup.add(btn_add, btn_view, btn_delete)
     
-    if os.path.exists(notes_file):
-        with open(notes_file, 'r', encoding='utf-8') as f:
-            for line in f:
-                note_id, text = line.strip().split(' - ', 1)
-                notes[int(note_id)] = text
+    bot.send_message(message.chat.id, "Выберите действие:", reply_markup=markup)
 
+@bot.message_handler(commands=['start'])
+def start_command(message):
+    bot.send_message(message.chat.id, "Добро пожаловать! Используйте меню ниже.")
+    main_menu(message)
 
-def save_notes():
-    
-    with open(notes_file, 'w', encoding='utf-8') as f:
-        for note_id, text in notes.items():
-            f.write(f'{note_id} - {text}\n')
+@bot.message_handler(func=lambda message: message.text == "Добавить заметку")
+def add_note_command(message):
+    """Запрос текста для добавления заметки."""
+    msg = bot.send_message(message.chat.id, "Введите текст заметки:")
+    bot.register_next_step_handler(msg, process_note_addition)
 
-
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text('Привет! Я записная книжка. Используй /add для добавления заметки, /view для просмотра всех заметок и /delete для удаления заметки.')
-
-
-async def add(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if context.args:
-        note_id = len(notes) + 1
-        notes[note_id] = ' '.join(context.args)
-        save_notes() 
-        await update.message.reply_text(f'Заметка добавлена: {note_id} - {notes[note_id]}')
+def process_note_addition(message):
+    """Обработка добавления заметки."""
+    note_text = message.text.strip()
+    if note_text:
+        write_note(note_text)
+        bot.send_message(message.chat.id, "Заметка добавлена!")
     else:
-        await update.message.reply_text('Пожалуйста, укажите текст заметки после команды /add.')
+        bot.send_message(message.chat.id, "Пожалуйста, введите текст заметки.")
 
-
-async def view(update: Update, context: ContextTypes.DEFAULT_TYPE):
+@bot.message_handler(func=lambda message: message.text == "Просмотреть заметки")
+def view_notes_command(message):
+    notes = read_notes()
     if notes:
-        notes_list = '\n'.join([f'{note_id}: {text}' for note_id, text in notes.items()])
-        await update.message.reply_text(f'Ваши заметки:\n{notes_list}')
+        response = "Ваши заметки:\n"
+        for i, note in enumerate(notes):
+            response += f"{i + 1}. {note}\n"
     else:
-        await update.message.reply_text('Нет заметок.')
+        response = "У вас нет заметок."
+    
+    bot.send_message(message.chat.id, response)
 
+@bot.message_handler(func=lambda message: message.text == "Удалить заметку")
+def delete_note_command(message):
+    msg = bot.send_message(message.chat.id, "Введите номер заметки для удаления:")
+    bot.register_next_step_handler(msg, process_note_deletion)
 
-async def delete(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if context.args:
-        try:
-            note_id = int(context.args[0])
-            if note_id in notes:
-                del notes[note_id]
-                save_notes()  
-                await update.message.reply_text(f'Заметка {note_id} удалена.')
-            else:
-                await update.message.reply_text('Нет заметки с таким ID.')
-        except ValueError:
-            await update.message.reply_text('Пожалуйста, укажите ID заметки для удаления.')
-    else:
-        await update.message.reply_text('Пожалуйста, укажите ID заметки после команды /delete.')
+def process_note_deletion(message):
+    try:
+        index = int(message.text.strip()) - 1  
+        if delete_note(index):
+            bot.send_message(message.chat.id, "Заметка удалена!")
+        else:
+            bot.send_message(message.chat.id, "Заметка с таким номером не найдена.")
+    except ValueError:
+        bot.send_message(message.chat.id, "Пожалуйста, введите корректный номер заметки.")
+
+@bot.message_handler(commands=['help'])
+def help_command(message):
+    help_text = (
+        "/start - начать работу с ботом\n"
+        "/help - показать это сообщение"
+    )
+    bot.send_message(message.chat.id, help_text)
 
 
 if __name__ == '__main__':
-    load_notes()  
-
-    TELEGRAM_TOKEN = '8079891550:AAFNQ6iC1ZAZA4PJVpZkY5Fr5fan4hEH2MA'
-    
-    application = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
-    
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("add", add))
-    application.add_handler(CommandHandler("view", view))
-    application.add_handler(CommandHandler("delete", delete))
-
-    logger.info("Бот запущен...")
-    application.run_polling()
+    bot.polling(none_stop=True)
