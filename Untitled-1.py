@@ -11,6 +11,7 @@ bot = telebot.TeleBot(BOT_TOKEN)
 NOTE_FILE = 'notes.json'
 
 
+
 if not os.path.exists(NOTE_FILE):
     with open(NOTE_FILE, 'w', encoding='utf-8') as f:
         json.dump([], f)  
@@ -36,6 +37,11 @@ def delete_note(index):
             json.dump(notes, f, ensure_ascii=False, indent=4)
         return True
     return False
+
+def handler_new_member(message):
+    get_user = message.reply_to_message.from_user
+    bot.send_message(message.chat.id, f'User: {get_user.first_name}\nID{get_user.id}')
+
 
 
 def main_menu(message):
